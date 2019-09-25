@@ -1,0 +1,16 @@
+version: "2.2"
+services:
+  go:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/go/src/app
+  redis:
+    container_name: db
+    image: redis
+    network_mode: "host"
+    volumes:
+      - ./:/data
+    expose:
+      - "6379"
