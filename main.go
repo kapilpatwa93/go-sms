@@ -40,13 +40,13 @@ func main() {
 	redisClient := getRedisClient(config)
 	// initialising queue
 	q := queue.Init(redisClient)
-	ok := sender.Init(q)
+	ok := sender.IsReady(q)
 	if ok {
+		sender.Init(q)
 		sms_reader.Init(config, q)
 	}
-
-	//ch := make(chan int)
-	//<-ch
+	ch := make(chan int)
+	<-ch
 
 }
 

@@ -32,3 +32,7 @@ func (c channel) Subscribe() *redis.PubSub {
 func (c channel) Close() error {
 	return c.client.Subscribe(c.name).Close()
 }
+
+func (c channel) Receive() (interface{}, error) {
+	return c.client.Subscribe(c.name).Receive()
+}

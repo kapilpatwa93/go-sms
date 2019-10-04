@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const maxRoutines = 100
+const maxRoutines = 500
 const maxWaitCount = 12
 
 var currentRoutines uint32
@@ -19,25 +19,31 @@ var waitCount int
 
 type SMS struct {
 	queue *queue.Config
+
 }
 
-func initSMS(q *queue.Config) bool {
-	var smsWaitGroup sync.WaitGroup
-	sub := q.SMS.Subscribe()
-	_, err := sub.Receive()
+func isSMSReady(q *queue.Config) bool {
+	_, err := q.SMS.Receive()
 	if err != nil {
 		return false
 	}
-	smsWaitGroup.Add(1)
-	go readSMSQueue(sub, &smsWaitGroup)
-	smsWaitGroup.Wait()
 	return true
 }
 
-func readSMSQueue(subscribedChannel *redis.PubSub, smsWaitGroup *sync.WaitGroup) {
+func initSMS(q *queue.Config) {
+	fmt.Println("here")
+	//var smsWaitGroup sync.WaitGroup
+	sub := q.SMS.Subscribe()
+	//smsWaitGroup.Add(1)
+	go readSMSQueue(sub)
+	//smsWaitGroup.Wait()
+}
+
+func readSMSQueue(subscribedChannel *redis.PubSub) {
 	var wg sync.WaitGroup
 	ch := subscribedChannel.Channel()
 	for waitCount < maxWaitCount {
+		fmt.Println("for")
 		if atomic.LoadUint32(&currentRoutines) < maxRoutines {
 			select {
 			case payload := <-ch:
@@ -49,19 +55,24 @@ func readSMSQueue(subscribedChannel *redis.PubSub, smsWaitGroup *sync.WaitGroup)
 				go sendSMS(phone, message, &wg)
 				waitCount = 0
 			default:
+				fmt.Println("default")
 				waitCount++
 				time.Sleep(time.Second * 2)
 			}
+		} else {
+			fmt.Println("else")
+			waitCount++
+			time.Sleep(time.Second * 2)
 		}
 	}
+	fmt.Println("Done with sending sms")
 	wg.Wait()
-	smsWaitGroup.Done()
+	//smsWaitGroup.Done()
 }
 
 func sendSMS(phone, message string, wg *sync.WaitGroup) {
 	rand.Seed(time.Now().UnixNano())
-	atomic.AddUint32(&currentRoutines, 1)
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(5000)))
+	//time.Sleep(time.Millisecond * time.Duration(rand.Intn(2000)))
 	atomic.AddUint32(&currentRoutines, ^uint32(0))
 	fmt.Println(message, " sent to ", phone, atomic.LoadUint32(&currentRoutines))
 	wg.Done()
